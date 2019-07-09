@@ -19,7 +19,7 @@ Para tanto, o conteúdo do laboratório possui algumas imagens Linux que sobem v
 - Kerberos.
 
 By the way, se não estiver familiarizado com o Vagrant, sugiro começar por [aqui](https://www.vagrantup.com/intro/index.html).<br/>
-No [primeiro artigo](instructions/kafka-ssl-encryption.md) pretendo inicialmente trabalhar a encriptação de dados via SSL.<br/>
+No [primeiro artigo](kafka-ssl/instructions/kafka-ssl-encryption.md) pretendo inicialmente trabalhar a encriptação de dados via SSL.<br/>
 Os demais artigos ainda serão escritos assim como a montagem dos laboratórios. Be patient! Em breve estarão disponíveis.
 
 Para iniciar os boxes basta digitar:
