@@ -1,0 +1,352 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  #configuracao da instancia da autoridade certificadora (CA)
+  config.vm.define "ca" do |ca|
+    ca.vm.box = "ubuntu/xenial64"
+
+    ca.vm.network "private_network", ip: "192.168.56.16"
+    ca.vm.hostname = "ca.infobarbosa.github.com"
+    ca.vm.provider "virtualbox" do |v|
+      v.memory = 512
+      v.cpus = 1
+      v.name = "ca-lab-security.vagrant"
+    end
+
+    ca.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    ca.vm.provision "shell", inline: <<-SHELL
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+      sudo cat hosts >> /etc/hosts
+
+      #Gerando uma autoridade certificadora (CA)
+      mkdir -p /home/vagrant/ssl
+      openssl req -new -newkey rsa:4096 -days 365 -x509 -subj "/CN=Kafka-Security-CA" -keyout /home/vagrant/ssl/ca-key -out /home/vagrant/ssl/ca-cert -nodes
+      sudo chown -R vagrant:vagrant ssl
+
+    SHELL
+  end
+
+  #configuracao da instancia do zookeeper
+  config.vm.define "zookeeper1" do |zookeeper1|
+    zookeeper1.vm.box = "ubuntu/xenial64"
+
+    zookeeper1.vm.network "private_network", ip: "192.168.56.10"
+    zookeeper1.vm.hostname = "zookeeper1.infobarbosa.github.com"
+    zookeeper1.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+      v.name = "zookeeper-lab-security.vagrant"
+    end
+
+    zookeeper1.vm.provision "file", source: "daemons/zookeeper.service", destination: "zookeeper.service"
+    zookeeper1.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    zookeeper1.vm.provision "shell", inline: <<-SHELL
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+      sudo cat hosts >> /etc/hosts
+
+      sudo add-apt-repository ppa:openjdk-r/ppa
+      sudo apt-get -y update && sudo apt-get install -y openjdk-8-jdk
+      wget -qO - https://packages.confluent.io/deb/5.2/archive.key | sudo apt-key add -
+      sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+      sudo apt-get -y update && sudo apt-get install -y confluent-community-2.12
+
+      sudo ufw allow 2181/tcp
+
+      sudo cp zookeeper.service /etc/systemd/system/zookeeper.service
+      chown root:root /etc/systemd/system/zookeeper.service
+      sudo systemctl enable zookeeper
+      sudo systemctl start zookeeper
+
+    SHELL
+  end
+
+  #configuracao da instancia do kafka
+  config.vm.define "kafka1" do |kafka1|
+    kafka1.vm.box = "ubuntu/xenial64"
+
+    kafka1.vm.network "private_network", ip: "192.168.56.11"
+    kafka1.vm.hostname = "kafka1.infobarbosa.github.com"
+    kafka1.vm.provider "virtualbox" do |v|
+      v.memory = 1536
+      v.cpus = 1
+      v.name = "kafka1-lab-security.vagrant"
+    end
+
+    kafka1.vm.provision "file", source: "daemons/kafka.service", destination: "kafka.service"
+    kafka1.vm.provision "file", source: "config-files/server1.properties", destination: "server.properties"
+    kafka1.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    #root script
+    $script1 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cat hosts >> /etc/hosts
+
+      add-apt-repository ppa:openjdk-r/ppa
+      apt-get -y update && apt-get install -y openjdk-8-jdk
+      wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
+      add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+      apt-get -y update && sudo apt-get install -y confluent-community-2.12
+
+      ufw allow 9092/tcp
+      ufw allow 9093/tcp
+      ufw allow 9094/tcp
+      ufw allow 9999/tcp
+
+      mv server.properties /etc/kafka/server.properties
+
+    SCRIPT
+
+    kafka1.vm.provision "shell", inline: $script1
+
+    #normal user script
+    $script2 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+    SCRIPT
+
+    kafka1.vm.provision "shell", inline: $script2, privileged: false
+
+    #root finalizacao com start do Kafka
+    $script3 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cp kafka.service /etc/systemd/system/kafka.service
+      chown root:root /etc/systemd/system/kafka.service
+      systemctl enable kafka
+      systemctl start kafka
+
+    SCRIPT
+
+    kafka1.vm.provision "shell", inline: $script3
+  end
+
+  #configuracao da instancia do kafka
+  config.vm.define "kafka2" do |kafka2|
+    kafka2.vm.box = "ubuntu/xenial64"
+
+    kafka2.vm.network "private_network", ip: "192.168.56.12"
+    kafka2.vm.hostname = "kafka2.infobarbosa.github.com"
+    kafka2.vm.provider "virtualbox" do |v|
+      v.memory = 1536
+      v.cpus = 1
+      v.name = "kafka2-lab-security.vagrant"
+    end
+
+    kafka2.vm.provision "file", source: "daemons/kafka.service", destination: "kafka.service"
+    kafka2.vm.provision "file", source: "config-files/server2.properties", destination: "server.properties"
+    kafka2.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    #root script
+    $script1 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cat hosts >> /etc/hosts
+
+      add-apt-repository ppa:openjdk-r/ppa
+      apt-get -y update && apt-get install -y openjdk-8-jdk
+      wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
+      add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+      apt-get -y update && sudo apt-get install -y confluent-community-2.12
+
+      ufw allow 9092/tcp
+      ufw allow 9093/tcp
+      ufw allow 9094/tcp
+      ufw allow 9999/tcp
+
+      mv server.properties /etc/kafka/server.properties
+
+    SCRIPT
+
+    kafka2.vm.provision "shell", inline: $script1
+
+    #normal user script
+    $script2 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+    SCRIPT
+
+    kafka2.vm.provision "shell", inline: $script2, privileged: false
+
+    #root finalizacao com start do Kafka
+    $script3 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cp kafka.service /etc/systemd/system/kafka.service
+      chown root:root /etc/systemd/system/kafka.service
+      systemctl enable kafka
+      systemctl start kafka
+
+    SCRIPT
+
+    kafka2.vm.provision "shell", inline: $script3
+
+  end
+
+  #configuracao da instancia do kafka
+  config.vm.define "kafka3" do |kafka3|
+    kafka3.vm.box = "ubuntu/xenial64"
+
+    kafka3.vm.network "private_network", ip: "192.168.56.13"
+    kafka3.vm.hostname = "kafka3.infobarbosa.github.com"
+    kafka3.vm.provider "virtualbox" do |v|
+      v.memory = 1536
+      v.cpus = 1
+      v.name = "kafka3-lab-security.vagrant"
+    end
+
+    kafka3.vm.provision "file", source: "daemons/kafka.service", destination: "kafka.service"
+    kafka3.vm.provision "file", source: "config-files/server3.properties", destination: "server.properties"
+    kafka3.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    #root script
+    $script1 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cat hosts >> /etc/hosts
+
+      add-apt-repository ppa:openjdk-r/ppa
+      apt-get -y update && apt-get install -y openjdk-8-jdk
+      wget -qO - https://packages.confluent.io/deb/5.2/archive.key | apt-key add -
+      add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.2 stable main"
+      apt-get -y update && sudo apt-get install -y confluent-community-2.12
+
+      ufw allow 9092/tcp
+      ufw allow 9093/tcp
+      ufw allow 9094/tcp
+      ufw allow 9999/tcp
+
+      mv server.properties /etc/kafka/server.properties
+
+    SCRIPT
+
+    kafka3.vm.provision "shell", inline: $script1
+
+    #normal user script
+    $script2 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+    SCRIPT
+
+    kafka3.vm.provision "shell", inline: $script2, privileged: false
+
+    #root finalizacao com start do Kafka
+    $script3 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cp kafka.service /etc/systemd/system/kafka.service
+      chown root:root /etc/systemd/system/kafka.service
+      systemctl enable kafka
+      systemctl start kafka
+
+    SCRIPT
+
+    kafka3.vm.provision "shell", inline: $script3
+
+  end
+
+
+  #configuracao da instancia da aplicacao cliente
+  config.vm.define "kafka-client" do |client|
+    client.vm.box = "ubuntu/xenial64"
+
+    client.vm.network "private_network", ip: "192.168.56.14"
+    client.vm.hostname = "kafka-client.infobarbosa.github.com"
+    client.vm.provider "virtualbox" do |v|
+      v.memory = 512
+      v.cpus = 1
+      v.name = "kafka-client-lab-security.vagrant"
+    end
+
+    client.vm.provision "file", source: "config-files/hosts", destination: "hosts"
+
+    #root script
+    $script1 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cat hosts >> /etc/hosts
+
+      add-apt-repository ppa:openjdk-r/ppa
+      apt-get -y update && apt-get install -y openjdk-8-jdk
+      apt-get install -y maven
+
+    SCRIPT
+
+    client.vm.provision "shell", inline: $script1
+
+    #normal user script
+    $script2 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      #setup para passwordless
+      mkdir -p /home/vagrant/.ssh
+      cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
+      cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
+
+      ln -s /vagrant/aplicacao1/ aplicacao1
+      ln -s /vagrant/aplicacao2/ aplicacao2
+
+      #build do projeto producer
+      cd ~/aplicacao1
+      mvn clean package
+
+      #build do projeto consumer
+      cd ~/aplicacao2
+      mvn clean package
+
+    SCRIPT
+
+    client.vm.provision "shell", inline: $script2, privileged: false
+
+  end
+end

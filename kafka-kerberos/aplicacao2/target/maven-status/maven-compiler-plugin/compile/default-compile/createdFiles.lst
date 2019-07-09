@@ -1,0 +1,8 @@
+com/github/infobarbosa/kafka/SslConsumer.class
+com/github/infobarbosa/kafka/PlaintextConsumer.class
+com/github/infobarbosa/kafka/SslAuthenticationConsumer.class
+com/github/infobarbosa/kafka/SaslAuthenticationConsumer.class
+com/github/infobarbosa/kafka/SslConsumer$1.class
+com/github/infobarbosa/kafka/PlaintextConsumer$1.class
+com/github/infobarbosa/kafka/SslAuthenticationConsumer$1.class
+com/github/infobarbosa/kafka/SaslAuthenticationConsumer$1.class
