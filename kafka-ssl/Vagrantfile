@@ -33,6 +33,16 @@ Vagrant.configure("2") do |config|
       openssl req -new -newkey rsa:4096 -days 365 -x509 -subj "/CN=Kafka-Security-CA" -keyout /home/vagrant/ssl/ca-key -out /home/vagrant/ssl/ca-cert -nodes
       sudo chown -R vagrant:vagrant ssl
 
+      #gerando certificados e requests para cada broker do cluster
+      openssl req -nodes -newkey rsa:4096 -keyout /home/vagrant/ssl/kafka1.key -out /home/vagrant/ssl/kafka1.csr -subj "/CN=kafka1.infobarbosa.github.com"
+      openssl req -nodes -newkey rsa:4096 -keyout /home/vagrant/ssl/kafka2.key -out /home/vagrant/ssl/kafka2.csr -subj "/CN=kafka2.infobarbosa.github.com"
+      openssl req -nodes -newkey rsa:4096 -keyout /home/vagrant/ssl/kafka3.key -out /home/vagrant/ssl/kafka3.csr -subj "/CN=kafka3.infobarbosa.github.com"
+
+      #assinatura dos certificados
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka1.csr -out /home/vagrant/ssl/kafka1-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka2.csr -out /home/vagrant/ssl/kafka2-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka3.csr -out /home/vagrant/ssl/kafka3-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+
     SHELL
   end
 
