@@ -86,7 +86,7 @@ ls -ltrh /home/vagrant/ssl/kafka1-cert-file
 Tudo pronto! É hora de efetivamente assinar o certificado:
 
 ```
-openssl x509 -req -CA ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka1-cert-file -out ssl/kafka1-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka1-cert-file -out /home/vagrant/ssl/kafka1-cert-signed -days 365 -CAcreateserial -passin pass:easypass
 
 ```
 Voltando ao terminal do kafka1, agora vamos simular a devolução do certificado assinado pelo time de segurança para o time de desenvolvimento, o que pode ser feito por email ou por algum processo formal na sua empresa.
