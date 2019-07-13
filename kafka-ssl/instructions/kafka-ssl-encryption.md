@@ -45,27 +45,39 @@ Agora que vimos o quanto expostos estão nossos dados, é hora de fazer o setup 
 
 Abra outra janela e entre na máquina do Kafka:
 ```
-vagrant ssh kafka1
 ```
+
+## Certificados
+
+Atencao! Esta sessao trata da geracao, assinatura e instalacao dos certificados em keystores e truststores.</br>
+Eh uma sessao bem trabalhosa e, na minha opiniao, nao eh onde devemos gastar muita energia pois nao tem a ver com o setup Kafka em si. </br>
+Te apresento duas opcoes:
+- Pilula vermelha: voce segue este roteiro e entende o que acontece nos bastidores;
+- Pilula azul: voce pula direto para a sessao de setup do Kafka.
 
 ### Gerando o certificado e a keystore
+
+_Se optou pela pilula vermelha, entao execute todos os passos desta sessao nos tres brokers._ </br>
+Atente-se aos nomes dos hosts (FQDN).
+
 ```
+vagrant ssh kafka1
 mkdir -p /home/vagrant/ssl
 
-keytool -genkey -keystore /home/vagrant/ssl/kafka.server.keystore.jks -validity 365 -storepass easypass -keypass easypass  -dname "CN=kafka1.infobarbosa.github.com" -storetype pkcs12
+keytool -genkey -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -validity 365 -storepass easypass -keypass easypass  -dname "CN=kafka1.infobarbosa.github.com" -storetype pkcs12
 
 ls -latrh
 ```
 Vamos checar o conteúdo da keystore
 ```
-keytool -list -v -keystore /home/vagrant/ssl/kafka.server.keystore.jks -storepass easypass
+keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -storepass easypass
 ```
 
-## Certification request
+### Certification request
 
 É hora de criar o certification request file. Esse arquivo vamos enviar para a **autoridade certificadora (CA)** pra que seja assinado.
 ```
-keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -certreq -file /home/vagrant/ssl/kafka1-cert-file -storepass easypass -keypass easypass
+keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -certreq -file /home/vagrant/ssl/kafka1-cert-file -storepass easypass -keypass easypass
 ```
 
 Pra simular o envio do arquivo para a CA, vamos copiar o arquivo **kafka1-cert-file** para a CA via _scp_.
@@ -73,7 +85,7 @@ Pra simular o envio do arquivo para a CA, vamos copiar o arquivo **kafka1-cert-f
 scp -o "StrictHostKeyChecking no" /home/vagrant/ssl/kafka1-cert-file vagrant@ca:/home/vagrant/ssl
 ```
 
-## Assinatura do certificado
+### Assinatura do certificado
 
 Abra outro terminal e entre na máquina da autoridade certificadora:
 ```
@@ -114,11 +126,11 @@ Se estiver no caminho certo, você vai encontrar as seguintes linhas no output:
 Owner: CN=kafka1.infobarbosa.github.com
 Issuer: CN=Kafka-Security-CA
 ```
-## Instalando os certificados
+### Instalando os certificados
 
 Antes de seguir, talvez você queira checar a keystore pra ter a visão do antes e depois:
 ```
-keytool -list -v -keystore /home/vagrant/ssl/kafka.server.keystore.jks -storepass easypass
+keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -storepass easypass
 ```
 Hora de executar as devidas importações.
 
@@ -126,13 +138,13 @@ Hora de executar as devidas importações.
 
 Importando a CA e o certificado assinado para a keystore:
 ```
-keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
 
-keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -import -file /home/vagrant/ssl/kafka1-cert-signed -storepass easypass -keypass easypass -noprompt
+keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -import -file /home/vagrant/ssl/kafka1-cert-signed -storepass easypass -keypass easypass -noprompt
 ```
 Checando se deu certo:
 ```
-keytool -list -v -keystore /home/vagrant/ssl/kafka.server.keystore.jks -storepass easypass
+keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -storepass easypass
 ```
 Se estamos no caminho certo, o output será algo como:
 ```
@@ -158,11 +170,11 @@ Issuer: CN=Kafka-Security-CA
 
 Cria a truststore e importa o certificado publico da CA (**ca-cert**) para ela:
 ```
-keytool -keystore /home/vagrant/ssl/kafka.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+keytool -keystore /home/vagrant/ssl/kafka1.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
 ```
 Checando se deu certo:
 ```
-keytool -list -v -keystore /home/vagrant/ssl/kafka.server.truststore.jks -storepass easypass
+keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.truststore.jks -storepass easypass
 
 ```
 
@@ -185,13 +197,14 @@ advertised.listeners=PLAINTEXT://kafka1.infobarbosa.github.com:9092,SSL://kafka1
 
 Acrescente também as linhas abaixo:
 ```
-ssl.keystore.location=/home/vagrant/ssl/kafka.server.keystore.jks
+ssl.keystore.location=/home/vagrant/ssl/kafka1.server.keystore.jks
 ssl.keystore.password=easypass
 ssl.key.password=easypass
-ssl.truststore.location=/home/vagrant/ssl/kafka.server.truststore.jks
+ssl.truststore.location=/home/vagrant/ssl/kafka1.server.truststore.jks
 ssl.truststore.password=easypass
-
 ```
+**Atente-se aa referencia a correta keystore e truststore de acordo com o broker.**
+</br>
 Agora reinicie o Kafka.
 ```
 sudo systemctl restart kafka
@@ -212,6 +225,8 @@ sudo grep "EndPoint" /var/log/kafka/server.log
 Uma outra verificação legal é testar o SSL de uma outra máquina:
 ```
 openssl s_client -connect kafka1.infobarbosa.github.com:9093
+openssl s_client -connect kafka2.infobarbosa.github.com:9093
+openssl s_client -connect kafka3.infobarbosa.github.com:9093
 ```
 Se aparecer CONNECTED, parabéns! </br>
 
@@ -280,7 +295,7 @@ Atenção! **enp0s8** é a interface de rede utilizada para host-only na minha m
 Se o comando nao funcionar entao verifique quais interfaces estao funcionando via **ifconfig** ou **tcpdump --list-interfaces**
 ```
 sudo -i
-sudo tcpdump -v -XX  -i enp0s8 'port 9094'
+sudo tcpdump -v -XX  -i enp0s8 'port 9093'
 ```
 Caso queira enviar o log para um arquivo para analisar melhor:
 ```
