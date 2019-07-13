@@ -22,11 +22,11 @@ public class SslAuthenticationProducer {
 
         properties.put("security.protocol", "SSL");
         properties.put("ssl.truststore.location", "/home/vagrant/ssl/kafka.client.truststore.jks");
-        properties.put("ssl.truststore.password", "senha-insegura");
+        properties.put("ssl.truststore.password", "weakpass");
 
         properties.put("ssl.keystore.location", "/home/vagrant/ssl/kafka.client.keystore.jks");
-        properties.put("ssl.keystore.password", "senha-insegura");
-        properties.put("ssl.key.password", "senha-insegura");
+        properties.put("ssl.keystore.password", "weakpass");
+        properties.put("ssl.key.password", "weakpass");
 
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
         final String topic = "teste";
