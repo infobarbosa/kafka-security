@@ -4,6 +4,8 @@
 *.iml
 .idea
 */target
+*.jar
+*.class
 .vagrant
 Kafka-Security-master
 *.log.*.gz

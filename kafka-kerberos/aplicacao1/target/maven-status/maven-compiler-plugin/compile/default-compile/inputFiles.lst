@@ -1,4 +1,0 @@
-/vagrant/aplicacao1/src/main/java/com/github/infobarbosa/kafka/PlaintextProducer.java
-/vagrant/aplicacao1/src/main/java/com/github/infobarbosa/kafka/SslProducer.java
-/vagrant/aplicacao1/src/main/java/com/github/infobarbosa/kafka/SslAuthenticationProducer.java
-/vagrant/aplicacao1/src/main/java/com/github/infobarbosa/kafka/SaslAuthenticationProducer.java
