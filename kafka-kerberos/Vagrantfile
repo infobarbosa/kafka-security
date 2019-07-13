@@ -16,24 +16,74 @@ Vagrant.configure("2") do |config|
 
     ca.vm.provision "file", source: "config-files/hosts", destination: "hosts"
 
-    ca.vm.provision "shell", inline: <<-SHELL
+    #root script
+    $script1 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
+      cat hosts >> /etc/hosts
+
+      add-apt-repository ppa:openjdk-r/ppa
+      apt-get -y update && apt-get install -y openjdk-8-jdk
+
+    SCRIPT
+
+    ca.vm.provision "shell", inline: $script1
+
+    #normal user script
+    $script2 = <<-SCRIPT
+      echo "usuario shell: `whoami`}"
+
       #setup para passwordless
       mkdir -p /home/vagrant/.ssh
       cp /vagrant/config-files/id_rsa /home/vagrant/.ssh/
       chmod 600 /home/vagrant/.ssh/id_rsa
       cp /vagrant/config-files/id_rsa.pub /home/vagrant/.ssh/
       cat /vagrant/config-files/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
-      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
-      sudo chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
-
-      sudo cat hosts >> /etc/hosts
-
+      
       #Gerando uma autoridade certificadora (CA)
-      mkdir ssl
-      openssl req -new -newkey rsa:4096 -days 365 -x509 -subj "/CN=Kafka-Security-CA" -keyout ssl/ca-key -out ssl/ca-cert -nodes
-      sudo chown -R vagrant:vagrant ssl
+      mkdir -p /home/vagrant/ssl
+      openssl req -new -newkey rsa:4096 -days 365 -x509 -subj "/CN=Kafka-Security-CA" -keyout /home/vagrant/ssl/ca-key -out /home/vagrant/ssl/ca-cert -nodes
 
-    SHELL
+      echo "geracao da key e keystore"
+      keytool -genkey -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -validity 365 -storepass easypass -keypass easypass  -dname "CN=kafka1.infobarbosa.github.com" -storetype pkcs12
+      keytool -genkey -keystore /home/vagrant/ssl/kafka2.server.keystore.jks -validity 365 -storepass easypass -keypass easypass  -dname "CN=kafka2.infobarbosa.github.com" -storetype pkcs12
+      keytool -genkey -keystore /home/vagrant/ssl/kafka3.server.keystore.jks -validity 365 -storepass easypass -keypass easypass  -dname "CN=kafka3.infobarbosa.github.com" -storetype pkcs12
+      keytool -genkey -keystore /home/vagrant/ssl/kafka.client.keystore.jks -validity 365 -storepass weakpass -keypass weakpass  -dname "CN=kafka-client.infobarbosa.github.com" -storetype pkcs12
+
+      echo "geracao do request para assinatura da chave pela autoridade certificadora"
+      keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -certreq -file /home/vagrant/ssl/kafka1-cert-file -storepass easypass -keypass easypass
+      keytool -keystore /home/vagrant/ssl/kafka2.server.keystore.jks -certreq -file /home/vagrant/ssl/kafka2-cert-file -storepass easypass -keypass easypass
+      keytool -keystore /home/vagrant/ssl/kafka3.server.keystore.jks -certreq -file /home/vagrant/ssl/kafka3-cert-file -storepass easypass -keypass easypass
+      keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -certreq -file /home/vagrant/ssl/kafka-client-cert-file -storepass weakpass -keypass weakpass
+
+      echo "assinatura da chave"
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka1-cert-file -out /home/vagrant/ssl/kafka1-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka2-cert-file -out /home/vagrant/ssl/kafka2-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka3-cert-file -out /home/vagrant/ssl/kafka3-cert-signed -days 365 -CAcreateserial -passin pass:easypass
+      openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /home/vagrant/ssl/kafka-client-cert-file -out /home/vagrant/ssl/kafka-client-cert-signed -days 365 -CAcreateserial -passin pass:weakpass
+
+      echo "importa o certificado publico da CA para a keystore"
+      keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka2.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka3.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass weakpass -keypass weakpass -noprompt
+
+      echo "importa o certificado para a keystore"
+      keytool -keystore /home/vagrant/ssl/kafka1.server.keystore.jks -import -file /home/vagrant/ssl/kafka1-cert-signed -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka2.server.keystore.jks -import -file /home/vagrant/ssl/kafka2-cert-signed -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka3.server.keystore.jks -import -file /home/vagrant/ssl/kafka3-cert-signed -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -import -file /home/vagrant/ssl/kafka-client-cert-signed -storepass weakpass -keypass weakpass -noprompt
+
+      echo "criacao da truststore importando o certificado publico da CA"
+      keytool -keystore /home/vagrant/ssl/kafka1.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka2.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka3.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass easypass -keypass easypass -noprompt
+      keytool -keystore /home/vagrant/ssl/kafka.client.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass weakpass -keypass weakpass -noprompt
+
+    SCRIPT
+
+    ca.vm.provision "shell", inline: $script2, privileged: false
+
   end
 
   #configuracao da instancia do kerberos
@@ -218,31 +268,17 @@ Vagrant.configure("2") do |config|
       chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
 
       #setup da encriptacao SSL
-      mkdir -p ssl
-      echo "geracao da key e keystore"
-      export SRVPASS=senha-insegura; keytool -genkey -keystore ssl/kafka.server.keystore.jks -validity 365 -storepass $SRVPASS -keypass $SRVPASS  -dname "CN=kafka1.infobarbosa.github.com" -storetype pkcs12
-      echo "geracao do request para assinatura da chave pela autoridade certificadora"
-      export SRVPASS=senha-insegura; keytool -keystore ssl/kafka.server.keystore.jks -certreq -file ssl/kafka1-cert-file -storepass $SRVPASS -keypass $SRVPASS
-      chown -R vagrant:vagrant ssl
-      echo "envio do request para assinatura"
-      scp -o "StrictHostKeyChecking no" ssl/kafka1-cert-file vagrant@ca:/home/vagrant/ssl
-      echo "assinatura da chave"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "export SRVPASS=senha-insegura ; openssl x509 -req -CA ssl/ca-cert -CAkey ssl/ca-key -in ssl/kafka1-cert-file -out ssl/kafka1-cert-signed -days 365 -CAcreateserial -passin pass:$SRVPASS"
-      echo "mundando o owner para vagrant"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "chown -R vagrant:vagrant ssl"
-      echo "copia da chave publica da autoridade certificadora"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/ca-cert /home/vagrant/ssl
-      echo "copia a chave assinada"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1-cert-signed /home/vagrant/ssl
-      echo "criacao da truststore importando o certificado"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -import -file /home/vagrant/ssl/kafka1-cert-signed -storepass $SRVPASS -keypass $SRVPASS -noprompt
+      mkdir -p /home/vagrant/ssl
+      
+      #download a keystore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.keystore.jks /home/vagrant/ssl/kafka.server.keystore.jks
 
+      #download a truststore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.truststore.jks /home/vagrant/ssl/kafka.server.truststore.jks
+
+      #download da keytab contendo a credencial do usuario do servico kafka
       mkdir -p /home/vagrant/keytabs/
-      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka1.service.keytab /home/vagrant/keytabs/
+      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka1.service.keytab /home/vagrant/keytabs/kafka.service.keytab
 
     SCRIPT
 
@@ -320,31 +356,17 @@ Vagrant.configure("2") do |config|
       chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
 
       #setup da encriptacao SSL
-      mkdir -p ssl
-      echo "geracao da key e keystore"
-      export SRVPASS=senha-insegura; keytool -genkey -keystore ssl/kafka.server.keystore.jks -validity 365 -storepass $SRVPASS -keypass $SRVPASS  -dname "CN=kafka2.infobarbosa.github.com" -storetype pkcs12
-      echo "geracao do request para assinatura da chave pela autoridade certificadora"
-      export SRVPASS=senha-insegura; keytool -keystore ssl/kafka.server.keystore.jks -certreq -file ssl/kafka2-cert-file -storepass $SRVPASS -keypass $SRVPASS
-      chown -R vagrant:vagrant ssl
-      echo "envio do request para assinatura"
-      scp -o "StrictHostKeyChecking no" ssl/kafka2-cert-file vagrant@ca:/home/vagrant/ssl
-      echo "assinatura da chave"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "export SRVPASS=senha-insegura ; openssl x509 -req -CA ssl/ca-cert -CAkey ssl/ca-key -in ssl/kafka2-cert-file -out ssl/kafka2-cert-signed -days 365 -CAcreateserial -passin pass:$SRVPASS"
-      echo "mundando o owner para vagrant"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "chown -R vagrant:vagrant ssl"
-      echo "copia da chave publica da autoridade certificadora"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/ca-cert /home/vagrant/ssl
-      echo "copia a chave assinada"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka2-cert-signed /home/vagrant/ssl
-      echo "criacao da truststore importando o certificado"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -import -file /home/vagrant/ssl/kafka2-cert-signed -storepass $SRVPASS -keypass $SRVPASS -noprompt
+      mkdir -p /home/vagrant/ssl
+      
+      #download da keystore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka2.server.keystore.jks /home/vagrant/ssl/kafka.server.keystore.jks
 
+      #download da truststore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka2.server.truststore.jks /home/vagrant/ssl/kafka.server.truststore.jks
+
+      #download da keytab contendo a credencial do usuario do servico kafka
       mkdir -p /home/vagrant/keytabs/
-      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka2.service.keytab /home/vagrant/keytabs/
+      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka2.service.keytab /home/vagrant/keytabs/kafka2.service.keytab
 
     SCRIPT
 
@@ -423,31 +445,17 @@ Vagrant.configure("2") do |config|
       chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
 
       #setup da encriptacao SSL
-      mkdir -p ssl
-      echo "geracao da key e keystore"
-      export SRVPASS=senha-insegura; keytool -genkey -keystore ssl/kafka.server.keystore.jks -validity 365 -storepass $SRVPASS -keypass $SRVPASS  -dname "CN=kafka3.infobarbosa.github.com" -storetype pkcs12
-      echo "geracao do request para assinatura da chave pela autoridade certificadora"
-      export SRVPASS=senha-insegura; keytool -keystore ssl/kafka.server.keystore.jks -certreq -file ssl/kafka3-cert-file -storepass $SRVPASS -keypass $SRVPASS
-      chown -R vagrant:vagrant ssl
-      echo "envio do request para assinatura"
-      scp -o "StrictHostKeyChecking no" ssl/kafka3-cert-file vagrant@ca:/home/vagrant/ssl
-      echo "assinatura da chave"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "export SRVPASS=senha-insegura ; openssl x509 -req -CA ssl/ca-cert -CAkey ssl/ca-key -in ssl/kafka3-cert-file -out ssl/kafka3-cert-signed -days 365 -CAcreateserial -passin pass:$SRVPASS"
-      echo "mundando o owner para vagrant"
-      ssh -o "StrictHostKeyChecking no" vagrant@ca "chown -R vagrant:vagrant ssl"
-      echo "copia da chave publica da autoridade certificadora"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/ca-cert /home/vagrant/ssl
-      echo "copia a chave assinada"
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka3-cert-signed /home/vagrant/ssl
-      echo "criacao da truststore importando o certificado"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $SRVPASS -keypass $SRVPASS -noprompt
-      echo "importa o certificado para a keystore"
-      export SRVPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.server.keystore.jks -import -file /home/vagrant/ssl/kafka3-cert-signed -storepass $SRVPASS -keypass $SRVPASS -noprompt
+      mkdir -p /home/vagrant/ssl
+      
+      #download da keystore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka3.server.keystore.jks /home/vagrant/ssl/kafka.server.keystore.jks
 
+      #download da truststore
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka3.server.truststore.jks /home/vagrant/ssl/kafka.server.truststore.jks
+
+      #download da keytab 
       mkdir -p /home/vagrant/keytabs/
-      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka3.service.keytab /home/vagrant/keytabs/
+      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka3.service.keytab /home/vagrant/keytabs/kafka.service.keytab
 
     SCRIPT
 
@@ -515,12 +523,16 @@ Vagrant.configure("2") do |config|
       chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
       chown vagrant:vagrant /home/vagrant/.ssh/id_rsa.pub
 
+      #Setup da encriptacao SSL
       mkdir -p /home/vagrant/ssl
-      ### copia da chave publica da autoridade certificadora
-      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/ca-cert /home/vagrant/ssl
-      ### criacao da truststore importando o certificado
-      export CLIPASS=senha-insegura ; keytool -keystore /home/vagrant/ssl/kafka.client.truststore.jks -alias CARoot -import -file /home/vagrant/ssl/ca-cert -storepass $CLIPASS -keypass $CLIPASS -noprompt
+      
+      #download da keystore da aplicacao cliente
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka.client.keystore.jks /home/vagrant/ssl
 
+      #download da truststore da aplicacao cliente
+      scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka.client.truststore.jks /home/vagrant/ssl
+
+      #download das keytabs contendo a credencial de cada usuario
       mkdir -p /home/vagrant/keytabs
       scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/aplicacao1.user.keytab /home/vagrant/keytabs/
       scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/aplicacao2.user.keytab /home/vagrant/keytabs/
