@@ -366,7 +366,7 @@ Vagrant.configure("2") do |config|
 
       #download da keytab contendo a credencial do usuario do servico kafka
       mkdir -p /home/vagrant/keytabs/
-      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka2.service.keytab /home/vagrant/keytabs/kafka2.service.keytab
+      scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka2.service.keytab /home/vagrant/keytabs/kafka.service.keytab
 
     SCRIPT
 
