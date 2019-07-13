@@ -24,7 +24,7 @@ public class SaslAuthenticationProducer {
         properties.put("sasl.kerberos.service.name", "kafka");
         properties.put("sasl.jaas.config", "com.sun.security.auth.module.Krb5LoginModule required useKeyTab=true storeKey=true keyTab=\"/home/vagrant/keytabs/aplicacao1.user.keytab\" principal=\"aplicacao1@KAFKA.INFOBARBOSA\";");
         properties.put("ssl.truststore.location", "/home/vagrant/ssl/kafka.client.truststore.jks");
-        properties.put("ssl.truststore.password", "senha-insegura");
+        properties.put("ssl.truststore.password", "weakpass");
 
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
         final String topic = "teste";

@@ -25,7 +25,7 @@ public class SslConsumer {
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         properties.put("security.protocol", "SSL");
         properties.put("ssl.truststore.location", "/home/vagrant/ssl/kafka.client.truststore.jks");
-        properties.put("ssl.truststore.password", "senha-insegura");
+        properties.put("ssl.truststore.password", "weakpass");
 
         final String topic = "teste";
 

@@ -28,7 +28,7 @@ public class SaslAuthenticationConsumer {
         properties.put("sasl.kerberos.service.name", "kafka");
         properties.put("sasl.jaas.config", "com.sun.security.auth.module.Krb5LoginModule required useKeyTab=true storeKey=true keyTab=\"/home/vagrant/keytabs/aplicacao2.user.keytab\" principal=\"aplicacao2@KAFKA.INFOBARBOSA\";");
         properties.put("ssl.truststore.location", "/home/vagrant/ssl/kafka.client.truststore.jks");
-        properties.put("ssl.truststore.password", "senha-insegura");
+        properties.put("ssl.truststore.password", "weakpass");
 
         final String topic = "teste";
 

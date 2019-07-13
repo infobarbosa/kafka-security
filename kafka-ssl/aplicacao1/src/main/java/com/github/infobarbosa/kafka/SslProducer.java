@@ -21,7 +21,7 @@ public class SslProducer {
         properties.put(ProducerConfig.RETRIES_CONFIG, "3");
         properties.put("security.protocol", "SSL");
         properties.put("ssl.truststore.location", "/home/vagrant/ssl/kafka.client.truststore.jks");
-        properties.put("ssl.truststore.password", "senha-insegura");
+        properties.put("ssl.truststore.password", "weakpass");
 
 
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
