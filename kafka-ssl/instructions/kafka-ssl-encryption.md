@@ -182,14 +182,22 @@ keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.truststore.jks -store
 
 Se voce tomou a pilula vermelha entao execute os seguintes comandos em cada Kafka:
 ```
+mkdir -p /home/vagrant/ssl
+
 echo "copia a keystore"
-scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.keystore.jks /home/vagrant/ssl
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.keystore.jks /home/vagrant/ssl/kafka.server.keystore.jks
 
 echo "copia a truststore"
-scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.truststore.jks /home/vagrant/ssl
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.truststore.jks /home/vagrant/ssl/kafka.server.truststore.jks
 ```
 _O que voce fez foi basicamente copiar a keystore e truststore que deixei maceteado no host da CA._ </br>
 _Se teve dificuldade aqui entao uma boa sugestao eh rever o script Vagrant na sessao de criacao da CA._
+</br>
+Verifique se estah tudo certo:
+```
+keytool -list -v -keystore /home/vagrant/ssl/kafka.server.keystore.jks -storepass easypass
+keytool -list -v -keystore /home/vagrant/ssl/kafka.server.truststore.jks -storepass easypass
+```
 
 Perfeito! Agora vamos ajustar configurações no broker alterando o arquivo **/etc/kafka/server.properties**:
 ```
@@ -208,10 +216,10 @@ advertised.listeners=PLAINTEXT://kafka1.infobarbosa.github.com:9092,SSL://kafka1
 
 Acrescente também as linhas abaixo:
 ```
-ssl.keystore.location=/home/vagrant/ssl/kafka1.server.keystore.jks
+ssl.keystore.location=/home/vagrant/ssl/kafka.server.keystore.jks
 ssl.keystore.password=easypass
 ssl.key.password=easypass
-ssl.truststore.location=/home/vagrant/ssl/kafka1.server.truststore.jks
+ssl.truststore.location=/home/vagrant/ssl/kafka.server.truststore.jks
 ssl.truststore.password=easypass
 ```
 **Atente-se aa referencia a correta keystore e truststore de acordo com o broker.**
@@ -245,7 +253,18 @@ Se aparecer CONNECTED, parabéns! </br>
 
 ## Aplicação cliente
 
-Estamos quase lá! Vamos fazer a configuracao SSL na aplicacao cliente.
+Estamos quase lá! Vamos fazer a configuracao SSL na aplicacao cliente.</br>
+Novamente te ofereco duas opcoes:
+Pilula vermelha: fazer a geracao e instalacao da truststore manualmente pra ver o que acontece nos bastidores;
+Pilula azul: importar a truststore maceteada que deixei na CA pra voce:
+```
+mkdir -p /home/vagrant/ssl
+echo "copia a truststore da aplicacao cliente"
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka.client.truststore.jks /home/vagrant/ssl
+
+```
+Se optou pela pilula azul entao pode ir direto para o teste da aplicacao cliente.
+Se seu lance eh pilula vermelha entao pode seguir os passos abaixo:
 ```
 vagrant ssh kafka-client
 
@@ -306,12 +325,12 @@ Atenção! **enp0s8** é a interface de rede utilizada para host-only na minha m
 Se o comando nao funcionar entao verifique quais interfaces estao funcionando via **ifconfig** ou **tcpdump --list-interfaces**
 ```
 sudo -i
-sudo tcpdump -v -XX  -i enp0s8 'port 9093'
+tcpdump -v -XX  -i enp0s8 'port 9093'
 ```
 Caso queira enviar o log para um arquivo para analisar melhor:
 ```
 sudo -i
-tcpdump -v -XX  -i enp0s8 -w dump.txt -c 100
+tcpdump -v -XX  -i enp0s8 'port 9093' -w dump.txt -c 1000
 ```
 
 Lembre-se que deixamos o broker respondendo na porta 9092 (plaintext).<br/>
@@ -323,6 +342,23 @@ Quando tiver finalizado sua configuração de listener no broker será parecida 
 listeners=PLAINTEXT://0.0.0.0:9093
 advertised.listeners=PLAINTEXT://kafka1.infobarbosa.github.com:9093
 ```
+## Encriptacao Intebroker
+
+O setup que fizemos ate aqui garante apenas a encripcao de dados entre a aplicacao cliente e o cluster kafka, mas nao a comunicacao entre os diferentes brokers.
+
+Se voce fizer um _tcpdump_ em um broker qualquer vai perceber que a porta 9092 ainda esta em uso. Basicamente eh por essa porta que as particoes _followers_ fazem fetch pra se manterem sincronizadas com as particoes _leaders_.
+```
+vagrant ssh kafka1
+sudo -i
+tcpdump -v -XX  -i enp0s8 'port 9092' -w dump9092.txt -c 1000
+tcpdump -v -XX  -i enp0s8 'port 9093' -w dump9093.txt -c 1000
+```
+
+Para habilitar a encriptacao inclusive entre os brokers, abra o arquivo _server.properties_ e acrescente a seguinte linha.
+```
+security.inter.broker.protocol=SSL
+```
+Done! A partir de agora voce tem uma comunicacao totalmente encriptada entre todos os componentes da solucao.
 
 Se tiver dúvidas, me envie! Tentarei ajudar como puder.<br/>
 Até o próximo artigo!

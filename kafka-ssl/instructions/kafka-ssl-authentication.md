@@ -1,8 +1,8 @@
 # Kafka SSL Encryption and Authentication Lab
 
 Esta é a segunda parte de um laboratório que visa exercitar features de segurança do Kafka.
-Na [primeira parte](https://github.com/infobarbosa/kafka-security-base-box/blob/master/instructions/kafka-ssl-encryption.md) trabalhamos a **encriptação** dos dados. Agora vamos exercitar a **encriptação** combinada com **autenticação** utilizando TSL (o antigo SSL), modelo também conhecido como 2-way Authentication.<br/>
-No exercício a seguir estou assumindo que você executou a primeira parte. Caso contrário, comece por [aqui](https://github.com/infobarbosa/kafka-security-base-box).<br/>
+Na [primeira parte](kafka-ssl-encryption.md) trabalhamos a **encriptação** dos dados. Agora vamos exercitar a **encriptação** combinada com **autenticação** utilizando TSL (o antigo SSL), modelo também conhecido como 2-way Authentication.<br/>
+No exercício a seguir estou assumindo que você executou a primeira parte. Caso contrário, comece por [aqui](../README.md).<br/>
 
 ## Let's go!
 
@@ -13,33 +13,42 @@ vagrant up
 
 ## Aplicação Cliente
 
-Conecte-se na máquina da aplicação cliente:
+Atencao! Esta sessao trata da geracao, assinatura e instalacao dos certificados em keystore.</br>
+Eh uma sessao bem trabalhosa e, na minha opiniao, nao eh onde devemos gastar muita energia pois nao tem a ver com o setup Kafka em si. </br>
+Te apresento duas opcoes:
+- Pilula vermelha: voce segue este roteiro e entende o que acontece nos bastidores;
+- Pilula azul: execute a importacao da keystore abaixo e depois pule direto para a sessao de setup do Kafka.
+
+Se optou pela pilula azul entao conecte-se na máquina da aplicação cliente:
 ```
 vagrant ssh kafka-client
+
+mkdir -p /home/vagrant/ssl
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka.client.keystore.jks /home/vagrant/ssl
 ```
 
-Crie de um certificado para a aplicação cliente:
+Se optou pela pilula vermelha entao comece criando um certificado para a aplicação cliente:
 ```
-export CLIPASS=senha-insegura
+export CLIPASS=weakpass
 
-keytool -genkey -keystore ~/ssl/kafka.client.keystore.jks -validity 365 -storepass $CLIPASS -keypass $CLIPASS  -dname "CN=kafka-client.infobarbosa.github.com" -alias kafka-client -storetype pkcs12
+keytool -genkey -keystore /home/vagrant/ssl/kafka.client.keystore.jks -validity 365 -storepass $CLIPASS -keypass $CLIPASS  -dname "CN=kafka-client.infobarbosa.github.com" -alias kafka-client -storetype pkcs12
 
-keytool -list -v -keystore ~/ssl/kafka.client.keystore.jks -storepass $CLIPASS
+keytool -list -v -keystore /home/vagrant/ssl/kafka.client.keystore.jks -storepass $CLIPASS
 ```
 
 ## Criação do request file
 
 Crie o request file que será assinado pela CA
 ```
-keytool -keystore ~/ssl/kafka.client.keystore.jks -certreq -file /vagrant/client-cert-sign-request -alias kafka-client -storepass $CLIPASS -keypass $CLIPASS
+keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -certreq -file /vagrant/client-cert-sign-request -alias kafka-client -storepass $CLIPASS -keypass $CLIPASS
 
 ```
 ## Enviando para a CA
 
-Vamos simular o envio da requisição para a CA. Assim como no último lab, basta copiar para o diretório /vagrant, diretório raiz no host, compartilhado pelas vms deste laboratório:
-**Atenção!** Se você executou o comando anterior na íntegra então o arquivo já estará no diretório /vagrant.
+Vamos simular o envio da requisição para a CA:
 ```
-cp ~/ssl/client-cert-sign-request /vagrant/
+scp -o "StrictHostKeyChecking no" /home/vagrant/ssl/client-cert-sign-request vagrant@ca:/home/vagrant/ssl
+
 ```
 
 ## Assinatura do certificado
@@ -52,8 +61,7 @@ vagrant ssh ca
 Assine o certificado utilizando a CA:
 
 ```
-export SRVPASS=serversecret
-openssl x509 -req -CA ~/ssl/ca-cert -CAkey ~/ssl/ca-key -in /vagrant/client-cert-sign-request -out /vagrant/client-cert-signed -days 365 -CAcreateserial -passin pass:$SRVPASS
+openssl x509 -req -CA /home/vagrant/ssl/ca-cert -CAkey /home/vagrant/ssl/ca-key -in /vagrant/client-cert-sign-request -out /home/vagrant/ssl/client-cert-signed -days 365 -CAcreateserial -passin pass:weakpass
 ```
 
 > **Atenção** <br/>
@@ -73,12 +81,17 @@ sudo chown vagrant:vagrant /home/vagrant/ssl/ca-cert.srl
 
 Se fechou a sessão com a aplicação cliente, vai precisar disto:
 ```
-export CLIPASS=senha-insegura
-```
+vagrant ssh kafka-client
 
+export CLIPASS=weakpass
+```
+Importando o certificado assinado:
+```
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/client-cert-signed /home/vagrant/ssl
+```
 Vamos checar o certificado assinado.
 ```
-keytool -printcert -v -file /vagrant/client-cert-signed
+keytool -printcert -v -file /home/vagrant/ssl/client-cert-signed
 ```
 Se o output tiver algo como...
 ```
@@ -94,7 +107,7 @@ keytool -keystore ~/ssl/kafka.client.keystore.jks -alias CARoot -import -file /v
 
 Agora importe o certificado assinado para a keystore:
 ```
-keytool -keystore ~/ssl/kafka.client.keystore.jks -import -file /vagrant/client-cert-signed -alias kafka-client -storepass $CLIPASS -keypass $CLIPASS -noprompt
+keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -import -file /vagrant/client-cert-signed -alias kafka-client -storepass $CLIPASS -keypass $CLIPASS -noprompt
 ```
 
 > **Atenção!**<br/>
@@ -106,7 +119,7 @@ keytool error: java.lang.Exception: Failed to establish chain from reply
 
 Verifique se está tudo lá:
 ```
-keytool -list -v -keystore ~/ssl/kafka.client.keystore.jks -storepass $CLIPASS
+keytool -list -v -keystore /home/vagrant/ssl/kafka.client.keystore.jks -storepass $CLIPASS
 ```
 
 O output será algo assim:
@@ -132,8 +145,8 @@ As classes produtora e consumidora são, respectivamente:
 Perceba a presença das linhas abaixo:
 ```
 properties.put("ssl.keystore.location", "/home/vagrant/ssl/kafka.client.keystore.jks");
-properties.put("ssl.keystore.password", "senha-insegura");
-properties.put("ssl.key.password", "senha-insegura");
+properties.put("ssl.keystore.password", "weakpass");
+properties.put("ssl.key.password", "weakpass");
 ```
 
 > Obviamente essas e outras propriedades não devem ser hard coded. Como boa prática devem ser injetadas via arquivo de configuração ou variáveis de ambiente.
@@ -171,7 +184,7 @@ Na máquina kafka-client
 ```
 vagrant ssh kafka-client
 
-cd ~/kafka-producer
+cd ~/aplicacao1
 ```
 Se ainda não tiver feito o build da aplicação, essa é a hora:
 ```
@@ -179,7 +192,7 @@ mvn clean package
 ```
 Agora execute a aplicação produtora:
 ```
-java -cp target/kafka-producer-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslAuthenticationProducer
+java -cp target/aplicacao1-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslAuthenticationProducer
 ```
 
 #### Janela 2
@@ -188,7 +201,7 @@ Na máquina kafka-client
 ```
 vagrant ssh kafka-client
 
-cd ~/kafka-consumer
+cd ~/aplicacao2
 ```
 Se ainda não tiver feito o build da aplicação, essa é a hora:
 ```
@@ -196,7 +209,7 @@ mvn clean package
 ```
 Agora execute a aplicação consumidora:
 ```
-java -cp target/kafka-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslAuthenticationConsumer
+java -cp target/aplicacao2-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslAuthenticationConsumer
 ```
 
 #### Janela 3. tcpdump na porta do servico para "escutar" o conteudo trafegado.
@@ -220,8 +233,8 @@ A partir de agora as aplicações cliente que tinham apenas a encriptação via 
 
 ```
 vagrant ssh kafka-client
-cd ~/kafka-producer
-java -cp target/kafka-producer-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslProducer
+cd ~/aplicacao1
+java -cp target/aplicacao1-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslProducer
 ```
 
 O resultado será uma mensagem de erro contendo um trecho como esse:
@@ -235,8 +248,8 @@ Caused by: javax.net.ssl.SSLProtocolException: Handshake message sequence violat
 O mesmo vale para a aplicação consumidora:
 ```
 vagrant ssh kafka-client
-cd ~/kafka-consumer
-java -cp target/kafka-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslConsumer
+cd ~/aplicacao2
+java -cp target/aplicacao2-1.0-SNAPSHOT-jar-with-dependencies.jar com.github.infobarbosa.kafka.SslConsumer
 ```
 
 ## Parabéns!
