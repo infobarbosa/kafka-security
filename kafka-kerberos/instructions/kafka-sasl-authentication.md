@@ -23,7 +23,7 @@ Perceba que hah tres keytabs para o kafka ("kafka1.service.keytab", "kafka2.serv
 
 Eh necessario porque cada broker precisa de uma keytab distinta que inclui o hostname (ou DNS).
 
-Para maior conforto, durante o provisionamento das instancias (vide linhas abaixo no Vagrantfile), fiz o download das respectivas keytabs.
+Para maior conforto, durante o provisionamento das instancias (vide linhas abaixo no Vagrantfile), fiz o download das respectivas keytabs:
 ```
 mkdir -p /home/vagrant/keytabs/
 scp -o "StrictHostKeyChecking no" vagrant@kerberos:/home/vagrant/keytabs/kafka1.service.keytab /home/vagrant/keytabs/
@@ -75,7 +75,7 @@ GSSAPI indica o uso de Kerberos como mecanismo habilitado de autenticacao.
 
 ### Etapa 2 - JAAS
 
-Vamos agora configurar um arquivo "kafka_server_jaas.conf" com o seguinte conteudo:
+Vamos agora configurar um arquivo **kafka_server_jaas.conf** com o seguinte conteudo:
 ```
 KafkaServer {
     com.sun.security.auth.module.Krb5LoginModule required
@@ -88,13 +88,13 @@ KafkaServer {
 
 No lab eu considero que o arquivo foi criado debaixo do diretorio /home/vagrant. Obviamente em sua instituicao voce escolhera um diretorio mais adequado.
 
-O broker 1, por exemplo, ficaria assim:
+Ao final o arquivo **kafka_server_jaas.conf** ficaria assim:
 ```
 KafkaServer {
     com.sun.security.auth.module.Krb5LoginModule required
     useKeyTab=true
     storeKey=true
-    keyTab="/home/vagrant/keytabs/kafka1.service.keytab"
+    keyTab="/home/vagrant/keytabs/kafka.service.keytab"
     principal="kafka/kafka1.infobarbosa.github.com@KAFKA.INFOBARBOSA";
 };
 ```
