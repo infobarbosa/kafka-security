@@ -34,7 +34,7 @@ As instruções para encriptação utilizando este lab podem ser encontradas [aq
 
 ## Autenticação
 
-Esse lab explora dois tipos de autenticacao: o [primeiro](kafka-ssl/instructions/kafka-ssl-authentication.md) baseado em TLS e o [segundo](kafka-kerberos/instructions/kafka-sasl-authentication) baseado em SASL e Kerberos.
+Esse lab explora dois tipos de autenticacao: o [primeiro](kafka-ssl/instructions/kafka-ssl-authentication.md) baseado em TLS e o [segundo](kafka-kerberos/instructions/kafka-sasl-authentication.md) baseado em SASL e Kerberos.
 
 ## Autorização
 
