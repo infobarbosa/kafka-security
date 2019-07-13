@@ -19,7 +19,7 @@ Te apresento duas opcoes:
 - Pilula vermelha: voce segue este roteiro e entende o que acontece nos bastidores;
 - Pilula azul: execute a importacao da keystore abaixo e depois pule direto para a sessao de setup do Kafka.
 
-Se optou pela pilula azul entao conecte-se na máquina da aplicação cliente:
+Se optou pela pilula azul entao execute os comandos abaixo na instancia da aplicação cliente e depois pule direto para a sessao de inspecao do codigo fonte:
 ```
 vagrant ssh kafka-client
 
@@ -36,14 +36,14 @@ keytool -genkey -keystore /home/vagrant/ssl/kafka.client.keystore.jks -validity 
 keytool -list -v -keystore /home/vagrant/ssl/kafka.client.keystore.jks -storepass $CLIPASS
 ```
 
-## Criação do request file
+### Criação do request file
 
 Crie o request file que será assinado pela CA
 ```
 keytool -keystore /home/vagrant/ssl/kafka.client.keystore.jks -certreq -file /vagrant/client-cert-sign-request -alias kafka-client -storepass $CLIPASS -keypass $CLIPASS
 
 ```
-## Enviando para a CA
+### Enviando para a CA
 
 Vamos simular o envio da requisição para a CA:
 ```
@@ -51,7 +51,7 @@ scp -o "StrictHostKeyChecking no" /home/vagrant/ssl/client-cert-sign-request vag
 
 ```
 
-## Assinatura do certificado
+### Assinatura do certificado
 
 Abra outra janela e entre na máquina da autoridade certificadora:
 ```
@@ -77,7 +77,7 @@ sudo chown vagrant:vagrant /home/vagrant/ssl/ca-cert.srl
 ```
 > Pronto! É só executar novamente o comando de assinatura do certificado
 
-## Kafka Cliente, setup da keystore
+### Kafka Cliente, setup da keystore
 
 Se fechou a sessão com a aplicação cliente, vai precisar disto:
 ```
@@ -136,6 +136,7 @@ Owner: CN=Kafka-Security-CA
 Issuer: CN=Kafka-Security-CA
 ...
 ```
+### Inspecionando o codigo da aplicacao cliente
 
 Dê uma olhada no códido das aplicações cliente.
 As classes produtora e consumidora são, respectivamente:
