@@ -29,9 +29,9 @@ vagrant up
 A montagem dos boxes leva entre 15 e 30 minutos, a depender da máquina que você tem. Vá tomar um café!
 
 > **Atencao!**
-> Os diretorios [_kafka-ssl_](kafka-ssl/) e [_kafka-kerberos_](kafka-kerberos/) sao independentes, cada um com o seu proprio Vagrantfile.
+> Os diretorios [_kafka-ssl_](kafka-ssl/) e [_kafka-kerberos_](kafka-kerberos/) sao independentes, cada um com o seu proprio Vagrantfile.</br>
 > Fiz isso porque talvez voce queira exercitar cada tema separadamente.
-> Ao optar por fazer o lab de [Kerberos](kafka-kerberos/), por exemplo, entao o setup SSL eh feito automaticamente pelo script Vagrant. :)
+> Ao optar por fazer o lab de [Kerberos](kafka-kerberos/), por exemplo, entao o setup SSL eh feito automaticamente pelo script Vagrant. :)</br>
 > Isso nao te impede de seguir do lab [SSL](kafka-ssl/) para o de Kerberos. Apenas tenha em mente de que neste ultimo voce tera que subir apenas o Kerberos.
 ```
 vagrant up kerberos
