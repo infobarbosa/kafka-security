@@ -180,6 +180,17 @@ keytool -list -v -keystore /home/vagrant/ssl/kafka1.server.truststore.jks -store
 
 ## kafka
 
+Se voce tomou a pilula vermelha entao execute os seguintes comandos em cada Kafka:
+```
+echo "copia a keystore"
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.keystore.jks /home/vagrant/ssl
+
+echo "copia a truststore"
+scp -o "StrictHostKeyChecking no" vagrant@ca:/home/vagrant/ssl/kafka1.server.truststore.jks /home/vagrant/ssl
+```
+_O que voce fez foi basicamente copiar a keystore e truststore que deixei maceteado no host da CA._ </br>
+_Se teve dificuldade aqui entao uma boa sugestao eh rever o script Vagrant na sessao de criacao da CA._
+
 Perfeito! Agora vamos ajustar configurações no broker alterando o arquivo **/etc/kafka/server.properties**:
 ```
 vi /etc/kafka/server.properties
