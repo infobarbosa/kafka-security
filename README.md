@@ -1,7 +1,7 @@
 # Kafka Security | Base Box
 
 Este projeto tem como objetivo exercitar as features de segurança do [Kafka](https://kafka.apache.org/).<br/>
-Normalmente são esperados três níveis de segurança: [**encriptação**](kafka-ssl/instructions/kafka-ssl-encryption.md), **autenticação** e **autorização**.<br/>
+Normalmente são esperados três níveis de segurança: [**encriptação**](kafka-ssl/instructions/kafka-ssl-encryption.md), [**autenticação**](kafka-kerberos/instructions/kafka-sasl-authentication.md) e **autorização**.<br/>
 Uma instalação inicial do Kafka não habilita qualquer nível de segurança. Portanto, é de responsabilidade do administrador do sistema habilitar tais recursos.<br/>
 Não é propósito deste laboratório substituir as documentações disponíveis sobre o tema. As mesmas são claras e objetivas e podem ser encontradas [aqui](https://kafka.apache.org/documentation/#security) e [aqui](https://docs.confluent.io/current/security.html).<br/>
 Com o laboratório pretendo simular um cenário onde há basicamente três atores (ou times):
@@ -14,9 +14,8 @@ Para tanto, o conteúdo do laboratório possui algumas imagens Linux que sobem v
 - Zookeeper;
 - Kafka;
 - Aplicação cliente: imagem Linux com duas aplicações cliente simples, uma produtora e outra consumidora;
-- Autoridade Certificadora: contém as chaves pública e privada;
-- Confluent Control Center;
-- Kerberos.
+- Autoridade Certificadora: emite certificados publicos e privados;
+- Kerberos: emite credenciais de usuarios para autenticacao.
 
 By the way, se não estiver familiarizado com o Vagrant, sugiro começar por [aqui](https://www.vagrantup.com/intro/index.html).<br/>
 No [primeiro artigo](kafka-ssl/instructions/kafka-ssl-encryption.md) pretendo inicialmente trabalhar a encriptação de dados via SSL.<br/>
@@ -35,7 +34,7 @@ As instruções para encriptação utilizando este lab podem ser encontradas [aq
 
 ## Autenticação
 
-Comming soon
+Esse lab explora dois tipos de autenticacao: o [primeiro](kafka-ssl/instructions/kafka-ssl-authentication.md) baseado em TLS e o [segundo](kafka-kerberos/instructions/kafka-sasl-authentication) baseado em SASL e Kerberos.
 
 ## Autorização
 
