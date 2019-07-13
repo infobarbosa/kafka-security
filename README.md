@@ -30,7 +30,7 @@ A montagem dos boxes leva entre 15 e 30 minutos, a depender da máquina que voc�
 
 ## Encriptação
 
-As instruções para encriptação utilizando este lab podem ser encontradas [aqui](instructions/kafka-ssl-encryption.md).
+As instruções para encriptação utilizando este lab podem ser encontradas [aqui](kafka-ssl/instructions/kafka-ssl-encryption.md).
 
 ## Autenticação
 
