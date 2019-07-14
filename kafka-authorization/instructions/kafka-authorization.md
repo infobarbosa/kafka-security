@@ -85,10 +85,12 @@ kafka-acls \
 ```
 
 ## Listagem das permissões correntes
+```
 kafka-acls \
   --authorizer-properties zookeeper.connect=zookeeper1.infobarbosa.github.com:2181/kafka \
   --list \
   --topic teste
+```
 
 ## Remoção de permissões
 ```
