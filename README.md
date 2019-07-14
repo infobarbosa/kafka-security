@@ -14,12 +14,10 @@ Para tanto, o conteúdo do laboratório possui algumas imagens Linux que sobem v
 - Zookeeper;
 - Kafka;
 - Aplicação cliente: imagem Linux com duas aplicações cliente simples, uma produtora e outra consumidora;
-- Autoridade Certificadora: emite certificados publicos e privados;
+- CA (Autoridade Certificadora): emite certificados publicos e privados;
 - Kerberos: emite credenciais de usuarios para autenticacao.
 
 By the way, se não estiver familiarizado com o Vagrant, sugiro começar por [aqui](https://www.vagrantup.com/intro/index.html).<br/>
-No [primeiro artigo](kafka-ssl/instructions/kafka-ssl-encryption.md) pretendo inicialmente trabalhar a encriptação de dados via SSL.<br/>
-Os demais artigos ainda serão escritos assim como a montagem dos laboratórios. Be patient! Em breve estarão disponíveis.
 
 Para iniciar os boxes basta digitar:
 ```
@@ -29,10 +27,10 @@ vagrant up
 A montagem dos boxes leva entre 15 e 30 minutos, a depender da máquina que você tem. Vá tomar um café!
 
 > **Atencao!**
-> Os diretorios [_kafka-ssl_](kafka-ssl/) e [_kafka-kerberos_](kafka-kerberos/) sao independentes, cada um com o seu proprio Vagrantfile.</br>
-> Fiz isso porque talvez voce queira exercitar cada tema separadamente.
-> Ao optar por fazer o lab de [Kerberos](kafka-kerberos/), por exemplo, entao o setup SSL eh feito automaticamente pelo script Vagrant. :)</br>
-> Isso nao te impede de seguir do lab [SSL](kafka-ssl/) para o de Kerberos. Apenas tenha em mente de que neste ultimo voce tera que subir apenas o Kerberos.
+> Os diretórios [_kafka-ssl_](kafka-ssl/), [_kafka-kerberos_](kafka-kerberos/) e [_kafka-authorization_] são independentes, cada um com o seu próprio Vagrantfile.</br>
+> Fiz isso porque talvez você queira exercitar cada tema separadamente.
+> Ao optar por fazer o lab de [Kerberos](kafka-kerberos/), por exemplo, então o setup SSL será feito automaticamente pelo script Vagrant. :)</br>
+> Isso não te impede de seguir do lab [SSL](kafka-ssl/) para o de Kerberos. Apenas tenha em mente de que neste último você terá que subir apenas o Kerberos.
 ```
 vagrant up kerberos
 ```
@@ -53,4 +51,11 @@ Esse lab explora dois tipos de autenticacao: o [primeiro](kafka-ssl/instructions
 
 ## Autorização
 
-Comming soon
+Esse lab explora o tema de autorização (ou gestão de permissões) no Kafka.
+As instruções podem ser encontradas [aqui](kafka-authorization/instructions/kafka-authorization.md).
+
+> Por favor, fique à vontade pra me mandar suas dúvidas, críticas e sugestões. Ajudarei no que estiver ao meu alcance. ;)
+
+Abraço,
+
+Barbosa @infobarbosa
