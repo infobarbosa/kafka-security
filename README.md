@@ -26,16 +26,16 @@ vagrant up
 
 A montagem dos boxes leva entre 15 e 30 minutos, a depender da máquina que você tem. Vá tomar um café!
 
-> **Atencao!**
-> Os diretórios [_kafka-ssl_](kafka-ssl/), [_kafka-kerberos_](kafka-kerberos/) e [_kafka-authorization_] são independentes, cada um com o seu próprio Vagrantfile.</br>
+> **Atenção!**
+> Os diretórios [_kafka-ssl_](kafka-ssl/), [_kafka-kerberos_](kafka-kerberos/) e [_kafka-authorization_](kafka-authorization/) são independentes, cada um com o seu próprio Vagrantfile.</br>
 > Fiz isso porque talvez você queira exercitar cada tema separadamente.
 > Ao optar por fazer o lab de [Kerberos](kafka-kerberos/), por exemplo, então o setup SSL será feito automaticamente pelo script Vagrant. :)</br>
 > Isso não te impede de seguir do lab [SSL](kafka-ssl/) para o de Kerberos. Apenas tenha em mente de que neste último você terá que subir apenas o Kerberos.
 ```
 vagrant up kerberos
 ```
-> Recomendo que ao final do lab SSL voce simplesmente o destrua e inicie um ambiente novo com _kafka-kerberos_.</br>
-> Para destruir o ambiente no Vagrant eh muito simples:
+> Recomendo que ao final do lab SSL você simplesmente o destrua e inicie um ambiente novo com _kafka-kerberos_.</br>
+> Para destruir o ambiente no Vagrant é muito simples:
 ```
 cd kafka-ssl
 vagrant destroy -f
